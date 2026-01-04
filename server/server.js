@@ -1,0 +1,88 @@
+const { createServer } = require('http');
+const { Server } = require('socket.io');
+const fs = require('fs');
+const path = require('path');
+
+const port = parseInt(process.env.PORT, 10) || 3001;
+
+const MESSAGES_FILE = path.join(__dirname, 'messages.json');
+
+// Initialize messages array
+let messages = [];
+
+// Load existing messages from file
+function loadMessages() {
+  try {
+    if (fs.existsSync(MESSAGES_FILE)) {
+      const data = fs.readFileSync(MESSAGES_FILE, 'utf-8');
+      messages = JSON.parse(data);
+      console.log(`Loaded ${messages.length} messages from ${MESSAGES_FILE}`);
+    } else {
+      // Create empty messages file
+      fs.writeFileSync(MESSAGES_FILE, JSON.stringify([], null, 2));
+      console.log(`Created new ${MESSAGES_FILE}`);
+    }
+  } catch (err) {
+    console.error('Error loading messages:', err);
+    messages = [];
+  }
+}
+
+// Save messages to file
+function saveMessages() {
+  try {
+    fs.writeFileSync(MESSAGES_FILE, JSON.stringify(messages, null, 2));
+  } catch (err) {
+    console.error('Error saving messages:', err);
+  }
+}
+
+const httpServer = createServer();
+
+const io = new Server(httpServer, {
+  cors: {
+    origin: '*',
+    methods: ['GET', 'POST'],
+  },
+});
+
+// Load messages on server start
+loadMessages();
+
+// Socket.io connection handling
+io.on('connection', (socket) => {
+  console.log('Client connected:', socket.id);
+
+  // Send chat history to newly connected client
+  socket.emit('chat_history', messages);
+
+  // Handle incoming messages
+  socket.on('send_message', (payload) => {
+    const { sender, text } = payload;
+
+    const message = {
+      sender,
+      text,
+      timestamp: new Date().toISOString(),
+    };
+
+    // Add to messages array
+    messages.push(message);
+
+    // Save to file
+    saveMessages();
+
+    // Broadcast to all connected clients
+    io.emit('new_message', message);
+
+    console.log('Message saved and broadcast:', message);
+  });
+
+  socket.on('disconnect', () => {
+    console.log('Client disconnected:', socket.id);
+  });
+});
+
+httpServer.listen(port, () => {
+  console.log(`> WebSocket server ready on http://localhost:${port}`);
+});
