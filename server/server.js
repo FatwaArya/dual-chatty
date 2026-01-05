@@ -4,6 +4,7 @@ const fs = require('fs');
 const path = require('path');
 
 const port = parseInt(process.env.PORT, 10) || 3001;
+const dev = process.env.NODE_ENV !== 'production';
 
 const MESSAGES_FILE = path.join(__dirname, 'messages.json');
 
@@ -37,52 +38,84 @@ function saveMessages() {
   }
 }
 
-const httpServer = createServer();
+// Setup Socket.IO handlers
+function setupSocketIO(io) {
+  io.on('connection', (socket) => {
+    console.log('Client connected:', socket.id);
 
-const io = new Server(httpServer, {
-  cors: {
-    origin: '*',
-    methods: ['GET', 'POST'],
-  },
-});
+    // Send chat history to newly connected client
+    socket.emit('chat_history', messages);
+
+    // Handle incoming messages
+    socket.on('send_message', (payload) => {
+      const { sender, text } = payload;
+
+      const message = {
+        sender,
+        text,
+        timestamp: new Date().toISOString(),
+      };
+
+      // Add to messages array
+      messages.push(message);
+
+      // Save to file
+      saveMessages();
+
+      // Broadcast to all connected clients
+      io.emit('new_message', message);
+
+      console.log('Message saved and broadcast:', message);
+    });
+
+    socket.on('disconnect', () => {
+      console.log('Client disconnected:', socket.id);
+    });
+  });
+}
 
 // Load messages on server start
 loadMessages();
 
-// Socket.io connection handling
-io.on('connection', (socket) => {
-  console.log('Client connected:', socket.id);
+// Production mode: Serve Next.js and Socket.IO on the same port
+if (!dev) {
+  const next = require('next');
+  const app = next({ dev: false, dir: path.join(__dirname, '../web') });
+  const handle = app.getRequestHandler();
 
-  // Send chat history to newly connected client
-  socket.emit('chat_history', messages);
+  app.prepare().then(() => {
+    const httpServer = createServer((req, res) => {
+      handle(req, res);
+    });
 
-  // Handle incoming messages
-  socket.on('send_message', (payload) => {
-    const { sender, text } = payload;
+    const io = new Server(httpServer, {
+      cors: {
+        origin: '*',
+        methods: ['GET', 'POST'],
+      },
+    });
 
-    const message = {
-      sender,
-      text,
-      timestamp: new Date().toISOString(),
-    };
+    setupSocketIO(io);
 
-    // Add to messages array
-    messages.push(message);
+    httpServer.listen(port, () => {
+      console.log(`> Production server ready on http://localhost:${port}`);
+      console.log('> Serving Next.js frontend and Socket.IO on the same port');
+    });
+  });
+} else {
+  // Development mode: Socket.IO only (Next.js runs separately)
+  const httpServer = createServer();
 
-    // Save to file
-    saveMessages();
-
-    // Broadcast to all connected clients
-    io.emit('new_message', message);
-
-    console.log('Message saved and broadcast:', message);
+  const io = new Server(httpServer, {
+    cors: {
+      origin: '*',
+      methods: ['GET', 'POST'],
+    },
   });
 
-  socket.on('disconnect', () => {
-    console.log('Client disconnected:', socket.id);
-  });
-});
+  setupSocketIO(io);
 
-httpServer.listen(port, () => {
-  console.log(`> WebSocket server ready on http://localhost:${port}`);
-});
+  httpServer.listen(port, () => {
+    console.log(`> WebSocket server ready on http://localhost:${port}`);
+  });
+}

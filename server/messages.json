@@ -1,0 +1,37 @@
+[
+  {
+    "sender": "User_f1ba882b",
+    "text": "tes",
+    "timestamp": "2026-01-05T04:50:22.572Z"
+  },
+  {
+    "sender": "User_badd5a33",
+    "text": "saa",
+    "timestamp": "2026-01-05T04:50:27.183Z"
+  },
+  {
+    "sender": "User_badd5a33",
+    "text": "s",
+    "timestamp": "2026-01-05T05:03:47.395Z"
+  },
+  {
+    "sender": "left",
+    "text": "test",
+    "timestamp": "2026-01-05T05:13:40.269Z"
+  },
+  {
+    "sender": "right",
+    "text": "righ",
+    "timestamp": "2026-01-05T05:13:44.821Z"
+  },
+  {
+    "sender": "dual-right",
+    "text": "sad",
+    "timestamp": "2026-01-05T05:15:33.339Z"
+  },
+  {
+    "sender": "dual-left",
+    "text": "asda",
+    "timestamp": "2026-01-05T05:15:35.224Z"
+  }
+]

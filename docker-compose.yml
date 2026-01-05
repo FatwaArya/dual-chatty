@@ -1,0 +1,20 @@
+services:
+  dual-chatty:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: dual-chatty
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+    volumes:
+      # Persist chat messages across container restarts
+      - chat-messages:/app/server
+    restart: unless-stopped
+
+volumes:
+  chat-messages:
+    driver: local
+
